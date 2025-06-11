@@ -4,6 +4,8 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
+const clientUrl = process.env.CLIENT_BASE_URL || "https://example.com";
 
 
 // Kayıt
@@ -15,17 +17,41 @@ router.post('/register', async (req, res) => {
     if (existingUser) return res.status(400).json({ message: 'Zaten kayıtlı' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
+    const activationToken = crypto.randomBytes(32).toString('hex');
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
-      fullname: username,     // 👈 Ekle
-      image: "",              // 👈 Ekle (varsayılan boş)
+      fullname: username,
+      image: "",
+      activationToken,
+      activationExpires: Date.now() + 24 * 60 * 60 * 1000
     });
 
     await newUser.save();
-    res.status(201).json({ message: 'Kayıt başarılı' });
+        const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Hesabınızı Aktive Edin',
+      html: `
+        <p>Merhaba,</p>
+        <p>Hesabınızı aktive etmek için aşağıdaki bağlantıya tıklayın:</p>
+        <a href="${clientUrl}/activate?token=${activationToken}">Hesabı Aktive Et</a>
+        <p>Bu bağlantı 24 saat geçerlidir.</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({ message: 'Kayıt başarılı, aktivasyon e-postası gönderildi' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -157,5 +183,31 @@ router.post("/google-check", async (req, res) => {
   }
 });
 
+router.get("/activate", async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ message: "Token gerekli" });
+  }
+
+  try {
+    const user = await User.findOne({
+      activationToken: token,
+      activationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Token geçersiz veya süresi dolmuş" });
+    }
+
+    user.emailConfirmed = true;
+    user.activationToken = undefined;
+    user.activationExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Hesap başarıyla aktifleştirildi" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;
