@@ -36,7 +36,13 @@ const UserSchema = new mongoose.Schema(
     image: {
       type: String,
       default: ''
-    }
+        },
+    emailConfirmed: {
+      type: Boolean,
+      default: false
+    },
+    activationToken: String,
+    activationExpires: Date
   },
   {
     timestamps: true // otomatik createdAt & updatedAt
