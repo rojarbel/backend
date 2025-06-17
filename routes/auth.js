@@ -133,7 +133,7 @@ router.post('/reset-password-request', async (req, res) => {
   
 
     const mailOptions = {
-  from: 'etkinlikapp@example.com',
+  from: process.env.EMAIL_USER,
   to: email,
   subject: 'Şifre Sıfırlama',
   html: `

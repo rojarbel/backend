@@ -3,17 +3,18 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
 const Etkinlik = require("../models/Etkinlik");
+const Favori = require("../models/Favori");
 require("dotenv").config();
 
 mongoose.connect(process.env.MONGO_URL);
 
 async function silGecmisEtkinlikler() {
   try {
-    const bugun = new Date();
-    bugun.setHours(0, 0, 0, 0);
-    const bugunStr = bugun.toISOString().split("T")[0];
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 1);
+    limitDate.setHours(0, 0, 0, 0);
 
-    const silinecekler = await Etkinlik.find({ tarih: { $lt: bugunStr } });
+    const silinecekler = await Etkinlik.find({ tarih: { $lt: limitDate } });
 
     for (const etkinlik of silinecekler) {
     if (etkinlik.gorsel) {
@@ -33,8 +34,13 @@ async function silGecmisEtkinlikler() {
     }
     }
 
-    const result = await Etkinlik.deleteMany({ tarih: { $lt: bugunStr } });
-    console.log(`[ETKİNLİK TEMİZLEME] ${result.deletedCount} etkinlik silindi (tarih < ${bugunStr}).`);
+    const ids = silinecekler.map(e => e._id);
+
+    const favoriSonuc = await Favori.deleteMany({ etkinlikId: { $in: ids } });
+    console.log(`[FAVORİ TEMİZLEME] ${favoriSonuc.deletedCount} favori silindi.`);
+
+    const result = await Etkinlik.deleteMany({ _id: { $in: ids } });
+    console.log(`[ETKİNLİK TEMİZLEME] ${result.deletedCount} etkinlik silindi (tarih < ${limitDate.toISOString().split("T")[0]}).`);
 
   } catch (error) {
     console.error("[HATA] Silme sırasında:", error.message);
@@ -51,3 +57,4 @@ if (require.main === module) {
     process.exit(); // script'i bitir
   });
 }
+module.exports = silGecmisEtkinlikler;
