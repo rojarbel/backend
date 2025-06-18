@@ -12,11 +12,14 @@ async function silGecmisEtkinlikler() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const silinecekler = await Etkinlik.find({ tarih: { $lt: today } });
+    const filter = { $expr: { $lt: [ { $toDate: "$tarih" }, today ] } };
+
+    const silinecekler = await Etkinlik.find(filter);
 
     for (const etkinlik of silinecekler) {
       if (etkinlik.gorsel) {
-        const gorselPath = path.join(__dirname, '../public/img/', etkinlik.gorsel);
+        const sanitizedFilename = etkinlik.gorsel.replace(/^\/img\//, "");
+        const gorselPath = path.join(__dirname, '../public/img', sanitizedFilename);
         if (fs.existsSync(gorselPath)) {
           try {
             fs.unlinkSync(gorselPath);
@@ -28,7 +31,7 @@ async function silGecmisEtkinlikler() {
       }
     }
 
-    const result = await Etkinlik.deleteMany({ tarih: { $lt: today } });
+    const result = await Etkinlik.deleteMany(filter);
     console.log(`[ETKİNLİK TEMİZLEME] ${result.deletedCount} etkinlik silindi (tarih < ${today.toISOString().split("T")[0]}).`);
 
   } catch (error) {
