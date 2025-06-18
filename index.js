@@ -1,7 +1,14 @@
 // Dotenv'i oku
-require("./jobs/deleteOldEvents");
+
 
 require('dotenv').config();
+// Zamanlanmış görevi ve fonksiyonunu al
+const silGecmisEtkinlikler = require("./jobs/deleteOldEvents");
+
+// Uygulama başladığında eski etkinlikleri hemen temizle
+silGecmisEtkinlikler().catch(err =>
+  console.error("silGecmisEtkinlikler başlangıç hatası:", err)
+);
 
 // Paketleri import et
 const express = require('express');
@@ -44,6 +51,8 @@ app.get('/', (req, res) => {
 mongoose.connect(process.env.MONGO_URL)
   .then(() => {
     console.log("✅ MongoDB bağlantısı başarılı");
+        const scheduleDeleteOldEvents = require("./jobs/deleteOldEvents");
+    scheduleDeleteOldEvents();
 const PORT = process.env.PORT || 5000;
 
 

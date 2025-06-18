@@ -5,15 +5,14 @@ const path = require("path");
 const Etkinlik = require("../models/Etkinlik");
 require("dotenv").config();
 
-mongoose.connect(process.env.MONGO_URL);
+
 
 async function silGecmisEtkinlikler() {
   try {
-    const bugun = new Date();
-    bugun.setHours(0, 0, 0, 0);
-    const bugunStr = bugun.toISOString().split("T")[0];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const silinecekler = await Etkinlik.find({ tarih: { $lt: bugunStr } });
+    const silinecekler = await Etkinlik.find({ tarih: { $lt: today } });
 
     for (const etkinlik of silinecekler) {
       if (etkinlik.gorsel) {
@@ -29,8 +28,8 @@ async function silGecmisEtkinlikler() {
       }
     }
 
-    const result = await Etkinlik.deleteMany({ tarih: { $lt: bugunStr } });
-    console.log(`[ETKİNLİK TEMİZLEME] ${result.deletedCount} etkinlik silindi (tarih < ${bugunStr}).`);
+    const result = await Etkinlik.deleteMany({ tarih: { $lt: today } });
+    console.log(`[ETKİNLİK TEMİZLEME] ${result.deletedCount} etkinlik silindi (tarih < ${today.toISOString().split("T")[0]}).`);
 
   } catch (error) {
     console.error("[HATA] Silme sırasında:", error.message);
@@ -38,12 +37,23 @@ async function silGecmisEtkinlikler() {
 }
 
 // Cron: her gece 00:01
-cron.schedule("1 0 * * *", silGecmisEtkinlikler);
+function scheduleDeleteOldEvents() {
+  // Cron: her gece 00:01
+  cron.schedule("1 0 * * *", silGecmisEtkinlikler);
+}
+
+module.exports = scheduleDeleteOldEvents;
 
 // Komutla çalıştırmak için:
 if (require.main === module) {
-  silGecmisEtkinlikler().then(() => {
-    console.log("✅ Manuel silme tamamlandı");
-    process.exit(); // script'i bitir
-  });
+  mongoose
+    .connect(process.env.MONGO_URL)
+    .then(() => silGecmisEtkinlikler())
+    .then(() => {
+      console.log("✅ Manuel silme tamamlandı");
+    })
+    .finally(() => {
+      mongoose.disconnect();
+      process.exit();
+    });
 }
