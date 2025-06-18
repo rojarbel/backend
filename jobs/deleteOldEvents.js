@@ -42,7 +42,10 @@ function scheduleDeleteOldEvents() {
   cron.schedule("1 0 * * *", silGecmisEtkinlikler);
 }
 
-module.exports = scheduleDeleteOldEvents;
+module.exports = {
+  silGecmisEtkinlikler,
+  scheduleDeleteOldEvents
+};
 
 // Komutla çalıştırmak için:
 if (require.main === module) {
