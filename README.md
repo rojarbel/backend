@@ -12,3 +12,4 @@ Old events are automatically removed by a cron job defined in `jobs/deleteOldEve
 The cron runs every night at 00:01 **as long as the application process is running**.
 At startup the cleanup job is also executed once immediately.
 
+ss
